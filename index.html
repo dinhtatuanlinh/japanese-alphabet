@@ -72,7 +72,7 @@
 <body>
   <header>
     <div class="container row">
-      <h1>Hiragana Quiz — Romaji → ひらがな</h1>
+      <h1 id="title">Hiragana Quiz — Romaji → ひらがな</h1>
       <div class="sub" id="kbdHint">Press 1–4 to answer · Space to skip</div>
     </div>
   </header>
@@ -87,6 +87,13 @@
       </div>
       <div class="card">
         <h2 style="margin:0 0 8px; font-size:16px; font-weight:700;">Quiz Settings</h2>
+        <div class="row" style="margin-bottom:8px;">
+          <span>Direction</span>
+          <select id="optDirection">
+            <option value="r2k" selected>Romaji → ひらがな</option>
+            <option value="k2r">ひらがな → Romaji</option>
+          </select>
+        </div>
         <div class="row" style="margin-bottom:8px;">
           <span>Choices per question</span>
           <select id="optChoices">
@@ -125,7 +132,7 @@
       </div>
       <div id="quiz" hidden>
         <div class="prompt">
-          <div class="hint">Romaji</div>
+          <div class="hint" id="hint">Romaji</div>
           <div class="romaji" id="prompt">ka</div>
         </div>
         <div class="choices" id="choices"></div>
@@ -206,6 +213,7 @@
     const state = {
       includeDakuten: false,
       includeYoon: false,
+      mode: 'r2k', // 'r2k' Romaji->Kana, 'k2r' Kana->Romaji
       choicesCount: 4,
       poolSize: 46,
       inProgress: false,
@@ -246,10 +254,12 @@
     const optDakuten = $('#optDakuten');
     const optYoon = $('#optYoon');
     const optChoices = $('#optChoices');
+    const optDirection = $('#optDirection');
     const optPool = $('#optPool');
     const optTimer = $('#optTimer');
     const btnStart = $('#btnStart');
     const timerEl = $('#timer');
+    const titleEl = $('#title');
 
     const statScore = $('#statScore');
     const statAsked = $('#statAsked');
@@ -293,6 +303,14 @@
       statStreak.textContent = state.streak;
       statBest.textContent = state.bestStreak;
       kbdHint.textContent = `Press 1–${state.choicesCount} to answer · Space to skip`;
+      // Update title and hint based on mode
+      if (state.mode === 'r2k') {
+        titleEl.textContent = 'Hiragana Quiz — Romaji → ひらがな';
+        document.querySelector('#hint').textContent = 'Romaji';
+      } else {
+        titleEl.textContent = 'Hiragana Quiz — ひらがな → Romaji';
+        document.querySelector('#hint').textContent = 'Hiragana';
+      }
     }
 
     function stopTimer(){ if (state.tick) { clearInterval(state.tick); state.tick = null; } }
@@ -320,13 +338,22 @@
         state.queue = state.currentPool.slice().sort(() => Math.random() - 0.5); // new cycle when exhausted
       }
       const qItem = state.queue.pop();
-      const distractors = state.currentPool
-        .filter(x=>x.k!==qItem.k)
-        .sort(()=>Math.random()-0.5)
-        .slice(0, Math.max(0, state.choicesCount-1));
-      const options = [qItem.k, ...distractors.map(d=>d.k)].sort(()=>Math.random()-0.5).slice(0, state.choicesCount);
-
-      state.question = { prompt: qItem.r, answer: qItem.k, options };
+      let options;
+      if (state.mode === 'r2k') {
+        const distractors = state.currentPool
+          .filter(x=>x.k!==qItem.k)
+          .sort(()=>Math.random()-0.5)
+          .slice(0, Math.max(0, state.choicesCount-1));
+        options = [qItem.k, ...distractors.map(d=>d.k)].sort(()=>Math.random()-0.5).slice(0, state.choicesCount);
+        state.question = { prompt: qItem.r, answer: qItem.k, options };
+      } else {
+        const distractors = state.currentPool
+          .filter(x=>x.r!==qItem.r)
+          .sort(()=>Math.random()-0.5)
+          .slice(0, Math.max(0, state.choicesCount-1));
+        options = [qItem.r, ...distractors.map(d=>d.r)].sort(()=>Math.random()-0.5).slice(0, state.choicesCount);
+        state.question = { prompt: qItem.k, answer: qItem.r, options };
+      }
       promptEl.textContent = state.question.prompt;
       choicesEl.innerHTML = '';
       options.forEach((opt, idx)=>{
@@ -359,7 +386,13 @@
       const correct = (k === state.question.answer);
       if (correct) state.score++;
       setMessage(correct ? '✅ Correct!' : `❌ Oops — ${state.question.prompt} = ${state.question.answer}`, correct);
-      pushHistory({ r: state.question.prompt, k: state.question.answer, correct, chosen: k });
+      // Store both forms consistently for history
+      if (state.mode === 'r2k') {
+        pushHistory({ r: state.question.prompt, k: state.question.answer, correct, chosen: k });
+      } else {
+        // In k2r mode, prompt is kana, answer is romaji
+        pushHistory({ r: state.question.answer, k: state.question.prompt, correct, chosen: k });
+      }
       state.streak = correct ? state.streak + 1 : 0;
       state.bestStreak = Math.max(state.bestStreak, state.streak);
       updateStats();
@@ -367,12 +400,24 @@
     }
 
     function reveal(){ if (state.question) choose(state.question.answer); }
-    function skip(){ if (!state.question) return; pushHistory({ r: state.question.prompt, k: state.question.answer, correct:false, chosen:'(skipped)' }); state.streak = 0; newQuestion(false); updateStats(); }
+    function skip(){
+      if (!state.question) return;
+      if (state.mode === 'r2k') {
+        pushHistory({ r: state.question.prompt, k: state.question.answer, correct:false, chosen:'(skipped)' });
+      } else {
+        // In k2r mode, store romaji in r and kana in k for consistency
+        pushHistory({ r: state.question.answer, k: state.question.prompt, correct:false, chosen:'(skipped)' });
+      }
+      state.streak = 0;
+      newQuestion(false);
+      updateStats();
+    }
 
     // Event wiring
     optDakuten.addEventListener('change', e=>{ state.includeDakuten = e.target.checked; renderChart(); });
     optYoon.addEventListener('change', e=>{ state.includeYoon = e.target.checked; renderChart(); });
     optChoices.addEventListener('change', e=>{ state.choicesCount = Number(e.target.value); updateStats(); });
+    optDirection.addEventListener('change', e=>{ state.mode = e.target.value; updateStats(); if (!state.inProgress) return; buildPoolAndQueue(); newQuestion(null); });
     optPool.addEventListener('change', e=>{ const fp = fullPool(); const v = Math.max(10, Math.min(fp.length, Number(e.target.value)||10)); state.poolSize = v; e.target.value = v; });
     optTimer.addEventListener('change', e=>{ state.timerOn = e.target.checked; if (!state.inProgress) return; stopTimer(); if (state.timerOn) { state.tick = setInterval(()=>{ state.seconds++; renderTimer(); }, 1000); } else { renderTimer(); } });
     btnStart.addEventListener('click', startQuiz);
