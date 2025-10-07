@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hiragana Quiz — Romaji → ひらがな</title>
+  <title>Japanese Kana Quiz — Romaji ⇄ ひらがな・カタカナ</title>
   <style>
     :root {
       --bg: #f8fafc; /* slate-50 */
@@ -72,7 +72,7 @@
 <body>
   <header>
     <div class="container row">
-      <h1 id="title">Hiragana Quiz — Romaji → ひらがな</h1>
+      <h1 id="title">Japanese Kana Quiz — Romaji → ひらがな</h1>
       <div class="sub" id="kbdHint">Press 1–4 to answer · Space to skip</div>
     </div>
   </header>
@@ -81,7 +81,14 @@
     <!-- Controls -->
     <section class="grid grid-3">
       <div class="card">
-        <h2 style="margin:0 0 8px; font-size:16px; font-weight:700;">Content</h2>
+        <h2 style="margin:0 0 8px; font-size:16px; font-weight:700;">Script Type</h2>
+        <div class="row" style="margin-bottom:8px;">
+          <span>Writing system</span>
+          <select id="optScript">
+            <option value="hiragana" selected>Hiragana ひらがな</option>
+            <option value="katakana">Katakana カタカナ</option>
+          </select>
+        </div>
         <label><input type="checkbox" id="optDakuten" /> Include dakuten/handakuten (が・ぱ…)</label>
         <label><input type="checkbox" id="optYoon" /> Include yōon combos (きゃ・しゅ・りょ)</label>
       </div>
@@ -167,7 +174,7 @@
 
   <script>
     // ===== Data =====
-    const BASE_KANA = [
+    const BASE_HIRAGANA = [
       { r: "a", k: "あ" }, { r: "i", k: "い" }, { r: "u", k: "う" }, { r: "e", k: "え" }, { r: "o", k: "お" },
       { r: "ka", k: "か" }, { r: "ki", k: "き" }, { r: "ku", k: "く" }, { r: "ke", k: "け" }, { r: "ko", k: "こ" },
       { r: "sa", k: "さ" }, { r: "shi", k: "し" }, { r: "su", k: "す" }, { r: "se", k: "せ" }, { r: "so", k: "そ" },
@@ -180,7 +187,20 @@
       { r: "wa", k: "わ" }, { r: "wo", k: "を" }, { r: "n", k: "ん" },
     ];
 
-    const DAKUTEN = [
+    const BASE_KATAKANA = [
+      { r: "a", k: "ア" }, { r: "i", k: "イ" }, { r: "u", k: "ウ" }, { r: "e", k: "エ" }, { r: "o", k: "オ" },
+      { r: "ka", k: "カ" }, { r: "ki", k: "キ" }, { r: "ku", k: "ク" }, { r: "ke", k: "ケ" }, { r: "ko", k: "コ" },
+      { r: "sa", k: "サ" }, { r: "shi", k: "シ" }, { r: "su", k: "ス" }, { r: "se", k: "セ" }, { r: "so", k: "ソ" },
+      { r: "ta", k: "タ" }, { r: "chi", k: "チ" }, { r: "tsu", k: "ツ" }, { r: "te", k: "テ" }, { r: "to", k: "ト" },
+      { r: "na", k: "ナ" }, { r: "ni", k: "ニ" }, { r: "nu", k: "ヌ" }, { r: "ne", k: "ネ" }, { r: "no", k: "ノ" },
+      { r: "ha", k: "ハ" }, { r: "hi", k: "ヒ" }, { r: "fu", k: "フ" }, { r: "he", k: "ヘ" }, { r: "ho", k: "ホ" },
+      { r: "ma", k: "マ" }, { r: "mi", k: "ミ" }, { r: "mu", k: "ム" }, { r: "me", k: "メ" }, { r: "mo", k: "モ" },
+      { r: "ya", k: "ヤ" }, { r: "yu", k: "ユ" }, { r: "yo", k: "ヨ" },
+      { r: "ra", k: "ラ" }, { r: "ri", k: "リ" }, { r: "ru", k: "ル" }, { r: "re", k: "レ" }, { r: "ro", k: "ロ" },
+      { r: "wa", k: "ワ" }, { r: "wo", k: "ヲ" }, { r: "n", k: "ン" },
+    ];
+
+    const DAKUTEN_HIRAGANA = [
       { r: "ga", k: "が" }, { r: "gi", k: "ぎ" }, { r: "gu", k: "ぐ" }, { r: "ge", k: "げ" }, { r: "go", k: "ご" },
       { r: "za", k: "ざ" }, { r: "ji", k: "じ" }, { r: "zu", k: "ず" }, { r: "ze", k: "ぜ" }, { r: "zo", k: "ぞ" },
       { r: "da", k: "だ" }, { r: "ji", k: "ぢ" }, { r: "zu", k: "づ" }, { r: "de", k: "で" }, { r: "do", k: "ど" },
@@ -188,7 +208,15 @@
       { r: "pa", k: "ぱ" }, { r: "pi", k: "ぴ" }, { r: "pu", k: "ぷ" }, { r: "pe", k: "ぺ" }, { r: "po", k: "ぽ" },
     ];
 
-    const YOON = [
+    const DAKUTEN_KATAKANA = [
+      { r: "ga", k: "ガ" }, { r: "gi", k: "ギ" }, { r: "gu", k: "グ" }, { r: "ge", k: "ゲ" }, { r: "go", k: "ゴ" },
+      { r: "za", k: "ザ" }, { r: "ji", k: "ジ" }, { r: "zu", k: "ズ" }, { r: "ze", k: "ゼ" }, { r: "zo", k: "ゾ" },
+      { r: "da", k: "ダ" }, { r: "ji", k: "ヂ" }, { r: "zu", k: "ヅ" }, { r: "de", k: "デ" }, { r: "do", k: "ド" },
+      { r: "ba", k: "バ" }, { r: "bi", k: "ビ" }, { r: "bu", k: "ブ" }, { r: "be", k: "ベ" }, { r: "bo", k: "ボ" },
+      { r: "pa", k: "パ" }, { r: "pi", k: "ピ" }, { r: "pu", k: "プ" }, { r: "pe", k: "ペ" }, { r: "po", k: "ポ" },
+    ];
+
+    const YOON_HIRAGANA = [
       { r: "kya", k: "きゃ" }, { r: "kyu", k: "きゅ" }, { r: "kyo", k: "きょ" },
       { r: "gya", k: "ぎゃ" }, { r: "gyu", k: "ぎゅ" }, { r: "gyo", k: "ぎょ" },
       { r: "sha", k: "しゃ" }, { r: "shu", k: "しゅ" }, { r: "sho", k: "しょ" },
@@ -203,6 +231,21 @@
       { r: "rya", k: "りゃ" }, { r: "ryu", k: "りゅ" }, { r: "ryo", k: "りょ" },
     ];
 
+    const YOON_KATAKANA = [
+      { r: "kya", k: "キャ" }, { r: "kyu", k: "キュ" }, { r: "kyo", k: "キョ" },
+      { r: "gya", k: "ギャ" }, { r: "gyu", k: "ギュ" }, { r: "gyo", k: "ギョ" },
+      { r: "sha", k: "シャ" }, { r: "shu", k: "シュ" }, { r: "sho", k: "ショ" },
+      { r: "ja", k: "ジャ" }, { r: "ju", k: "ジュ" }, { r: "jo", k: "ジョ" },
+      { r: "cha", k: "チャ" }, { r: "chu", k: "チュ" }, { r: "cho", k: "チョ" },
+      { r: "dya", k: "ヂャ" }, { r: "dyu", k: "ヂュ" }, { r: "dyo", k: "ヂョ" },
+      { r: "nya", k: "ニャ" }, { r: "nyu", k: "ニュ" }, { r: "nyo", k: "ニョ" },
+      { r: "hya", k: "ヒャ" }, { r: "hyu", k: "ヒュ" }, { r: "hyo", k: "ヒョ" },
+      { r: "bya", k: "ビャ" }, { r: "byu", k: "ビュ" }, { r: "byo", k: "ビョ" },
+      { r: "pya", k: "ピャ" }, { r: "pyu", k: "ピュ" }, { r: "pyo", k: "ピョ" },
+      { r: "mya", k: "ミャ" }, { r: "myu", k: "ミュ" }, { r: "myo", k: "ミョ" },
+      { r: "rya", k: "リャ" }, { r: "ryu", k: "リュ" }, { r: "ryo", k: "リョ" },
+    ];
+
     // ===== Helpers =====
     const $ = (sel) => document.querySelector(sel);
     function shuffle(arr) { const a = arr.slice(); for (let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
@@ -211,6 +254,7 @@
 
     // ===== State =====
     const state = {
+      scriptType: 'hiragana', // 'hiragana' or 'katakana'
       includeDakuten: false,
       includeYoon: false,
       mode: 'r2k', // 'r2k' Romaji->Kana, 'k2r' Kana->Romaji
@@ -232,9 +276,13 @@
     };
 
     function fullPool(){
-      let p = BASE_KANA.slice();
-      if (state.includeDakuten) p = p.concat(DAKUTEN);
-      if (state.includeYoon) p = p.concat(YOON);
+      let p = state.scriptType === 'hiragana' ? BASE_HIRAGANA.slice() : BASE_KATAKANA.slice();
+      if (state.includeDakuten) {
+        p = p.concat(state.scriptType === 'hiragana' ? DAKUTEN_HIRAGANA : DAKUTEN_KATAKANA);
+      }
+      if (state.includeYoon) {
+        p = p.concat(state.scriptType === 'hiragana' ? YOON_HIRAGANA : YOON_KATAKANA);
+      }
       return dedupe(p);
     }
 
@@ -251,6 +299,7 @@
     }
 
     // ===== UI Bindings =====
+    const optScript = $('#optScript');
     const optDakuten = $('#optDakuten');
     const optYoon = $('#optYoon');
     const optChoices = $('#optChoices');
@@ -303,13 +352,15 @@
       statStreak.textContent = state.streak;
       statBest.textContent = state.bestStreak;
       kbdHint.textContent = `Press 1–${state.choicesCount} to answer · Space to skip`;
-      // Update title and hint based on mode
+      // Update title and hint based on mode and script type
+      const scriptName = state.scriptType === 'hiragana' ? 'Hiragana' : 'Katakana';
+      const scriptChar = state.scriptType === 'hiragana' ? 'ひらがな' : 'カタカナ';
       if (state.mode === 'r2k') {
-        titleEl.textContent = 'Hiragana Quiz — Romaji → ひらがな';
+        titleEl.textContent = `${scriptName} Quiz — Romaji → ${scriptChar}`;
         document.querySelector('#hint').textContent = 'Romaji';
       } else {
-        titleEl.textContent = 'Hiragana Quiz — ひらがな → Romaji';
-        document.querySelector('#hint').textContent = 'Hiragana';
+        titleEl.textContent = `${scriptName} Quiz — ${scriptChar} → Romaji`;
+        document.querySelector('#hint').textContent = scriptName;
       }
     }
 
@@ -414,6 +465,15 @@
     }
 
     // Event wiring
+    optScript.addEventListener('change', e=>{ 
+      state.scriptType = e.target.value; 
+      renderChart(); 
+      updateStats();
+      if (state.inProgress) { 
+        buildPoolAndQueue(); 
+        newQuestion(null); 
+      }
+    });
     optDakuten.addEventListener('change', e=>{ state.includeDakuten = e.target.checked; renderChart(); });
     optYoon.addEventListener('change', e=>{ state.includeYoon = e.target.checked; renderChart(); });
     optChoices.addEventListener('change', e=>{ state.choicesCount = Number(e.target.value); updateStats(); });
