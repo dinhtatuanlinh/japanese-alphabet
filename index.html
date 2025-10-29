@@ -87,6 +87,7 @@
           <select id="optScript">
             <option value="hiragana" selected>Hiragana ひらがな</option>
             <option value="katakana">Katakana カタカナ</option>
+            <option value="mixed">Mixed ひらがな・カタカナ</option>
           </select>
         </div>
         <label><input type="checkbox" id="optDakuten" /> Include dakuten/handakuten (が・ぱ…)</label>
@@ -97,8 +98,8 @@
         <div class="row" style="margin-bottom:8px;">
           <span>Direction</span>
           <select id="optDirection">
-            <option value="r2k" selected>Romaji → ひらがな</option>
-            <option value="k2r">ひらがな → Romaji</option>
+            <option value="r2k" selected>Romaji → japanese</option>
+            <option value="k2r">japanese → Romaji</option>
           </select>
         </div>
         <div class="row" style="margin-bottom:8px;">
@@ -117,7 +118,7 @@
         </div>
         <div class="row">
           <span>Pool size</span>
-          <input type="number" id="optPool" min="10" value="46" style="width:90px" />
+          <input type="number" id="optPool" min="10" value="92" style="width:90px" />
         </div>
       </div>
       <div class="card">
@@ -198,10 +199,10 @@
       { r: "ta", k: "タ" }, { r: "chi", k: "チ" }, { r: "tsu", k: "ツ" }, { r: "te", k: "テ" }, { r: "to", k: "ト" },
       { r: "na", k: "ナ" }, { r: "ni", k: "ニ" }, { r: "nu", k: "ヌ" }, { r: "ne", k: "ネ" }, { r: "no", k: "ノ" },
       { r: "ha", k: "ハ" }, { r: "hi", k: "ヒ" }, { r: "fu", k: "フ" }, { r: "he", k: "ヘ" }, { r: "ho", k: "ホ" },
-      // { r: "ma", k: "マ" }, { r: "mi", k: "ミ" }, { r: "mu", k: "ム" }, { r: "me", k: "メ" }, { r: "mo", k: "モ" },
-      // { r: "ya", k: "ヤ" }, { r: "yu", k: "ユ" }, { r: "yo", k: "ヨ" },
-      // { r: "ra", k: "ラ" }, { r: "ri", k: "リ" }, { r: "ru", k: "ル" }, { r: "re", k: "レ" }, { r: "ro", k: "ロ" },
-      // { r: "wa", k: "ワ" }, { r: "wo", k: "ヲ" }, { r: "n", k: "ン" },
+      { r: "ma", k: "マ" }, { r: "mi", k: "ミ" }, { r: "mu", k: "ム" }, { r: "me", k: "メ" }, { r: "mo", k: "モ" },
+      { r: "ya", k: "ヤ" }, { r: "yu", k: "ユ" }, { r: "yo", k: "ヨ" },
+      { r: "ra", k: "ラ" }, { r: "ri", k: "リ" }, { r: "ru", k: "ル" }, { r: "re", k: "レ" }, { r: "ro", k: "ロ" },
+      { r: "wa", k: "ワ" }, { r: "wo", k: "ヲ" }, { r: "n", k: "ン" },
     ];
 
     const DAKUTEN_HIRAGANA = [
@@ -258,12 +259,12 @@
 
     // ===== State =====
     const state = {
-      scriptType: 'hiragana', // 'hiragana' or 'katakana'
+      scriptType: 'hiragana', // 'hiragana', 'katakana', or 'mixed'
       includeDakuten: false,
       includeYoon: false,
       mode: 'r2k', // 'r2k' Romaji->Kana, 'k2r' Kana->Romaji
-      choicesCount: 4,
-      poolSize: 46,
+      choicesCount: 10,
+      poolSize: 92,
       inProgress: false,
       question: null, // {prompt, answer, options}
       score: 0,
@@ -280,13 +281,34 @@
     };
 
     function fullPool(){
-      let p = state.scriptType === 'hiragana' ? BASE_HIRAGANA.slice() : BASE_KATAKANA.slice();
-      if (state.includeDakuten) {
-        p = p.concat(state.scriptType === 'hiragana' ? DAKUTEN_HIRAGANA : DAKUTEN_KATAKANA);
+      let p = [];
+      
+      if (state.scriptType === 'hiragana') {
+        p = BASE_HIRAGANA.slice();
+        if (state.includeDakuten) {
+          p = p.concat(DAKUTEN_HIRAGANA);
+        }
+        if (state.includeYoon) {
+          p = p.concat(YOON_HIRAGANA);
+        }
+      } else if (state.scriptType === 'katakana') {
+        p = BASE_KATAKANA.slice();
+        if (state.includeDakuten) {
+          p = p.concat(DAKUTEN_KATAKANA);
+        }
+        if (state.includeYoon) {
+          p = p.concat(YOON_KATAKANA);
+        }
+      } else if (state.scriptType === 'mixed') {
+        p = BASE_HIRAGANA.slice().concat(BASE_KATAKANA);
+        if (state.includeDakuten) {
+          p = p.concat(DAKUTEN_HIRAGANA).concat(DAKUTEN_KATAKANA);
+        }
+        if (state.includeYoon) {
+          p = p.concat(YOON_HIRAGANA).concat(YOON_KATAKANA);
+        }
       }
-      if (state.includeYoon) {
-        p = p.concat(state.scriptType === 'hiragana' ? YOON_HIRAGANA : YOON_KATAKANA);
-      }
+      
       return dedupe(p);
     }
 
@@ -356,15 +378,26 @@
       statStreak.textContent = state.streak;
       statBest.textContent = state.bestStreak;
       kbdHint.textContent = `Press 1–${state.choicesCount} to answer · Space to skip`;
+      
       // Update title and hint based on mode and script type
-      const scriptName = state.scriptType === 'hiragana' ? 'Hiragana' : 'Katakana';
-      const scriptChar = state.scriptType === 'hiragana' ? 'ひらがな' : 'カタカナ';
+      let scriptName, scriptChar;
+      if (state.scriptType === 'hiragana') {
+        scriptName = 'Hiragana';
+        scriptChar = 'ひらがな';
+      } else if (state.scriptType === 'katakana') {
+        scriptName = 'Katakana';
+        scriptChar = 'カタカナ';
+      } else if (state.scriptType === 'mixed') {
+        scriptName = 'Mixed Kana';
+        scriptChar = 'ひらがな・カタカナ';
+      }
+      
       if (state.mode === 'r2k') {
         titleEl.textContent = `${scriptName} Quiz — Romaji → ${scriptChar}`;
         document.querySelector('#hint').textContent = 'Romaji';
       } else {
         titleEl.textContent = `${scriptName} Quiz — ${scriptChar} → Romaji`;
-        document.querySelector('#hint').textContent = scriptName;
+        document.querySelector('#hint').textContent = scriptName === 'Mixed Kana' ? 'Kana' : scriptName;
       }
     }
 
